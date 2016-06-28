@@ -34,13 +34,16 @@ noinst_HEADERS = grep.h dfa.h kwset.h search.h system.h
 # must precede $(LIBINTL) in order to ensure we use GNU getopt.
 # But libgreputils.a must also follow $(LIBINTL), since libintl uses
 # replacement functions defined in libgreputils.a.
+
+# sgsh link against the sgsh negotiation library
 LDADD = \
   ../lib/libgreputils.a $(LIBINTL) ../lib/libgreputils.a $(LIBICONV) \
-  $(LIBTHREAD)
+  $(LIBTHREAD) ../../../libsgsh_negotiate.a
 
 grep_LDADD = $(LDADD) $(PCRE_LIBS)
 localedir = $(datadir)/locale
-AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib
+# sgsh include path: -I../../..
+AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib -I../../..
 
 EXTRA_DIST = dosbuf.c egrep.sh
 

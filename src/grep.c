@@ -50,6 +50,10 @@
 #include "xalloc.h"
 #include "xstrtol.h"
 
+/*  sgsh negotiate API (fix -I) */
+#include <assert.h>
+#include "sgsh-negotiate.h"
+
 #define SEP_CHAR_SELECTED ':'
 #define SEP_CHAR_REJECTED '-'
 #define SEP_STR_GROUP    "--"
@@ -769,6 +773,16 @@ all_zeros (char const *buf, size_t size)
 static bool
 reset (int fd, struct stat const *st)
 {
+  if (! pagesize)
+    {
+      pagesize = getpagesize ();
+      if (pagesize == 0 || 2 * pagesize + 1 <= pagesize)
+        abort ();
+      bufalloc = (ALIGN_TO (INITIAL_BUFSIZE, pagesize)
+                  + pagesize + sizeof (uword));
+      buffer = xmalloc (bufalloc);
+    }
+
   bufbeg = buflim = ALIGN_TO (buffer + 1, pagesize);
   bufbeg[-1] = eolbyte;
   bufdesc = fd;
@@ -919,14 +933,6 @@ static enum
   WITHOUT_MATCH_BINARY_FILES
 } binary_files;		/* How to handle binary files.  */
 
-/* Options for output as a list of matching/non-matching files */
-static enum
-{
-  LISTFILES_NONE,
-  LISTFILES_MATCHING,
-  LISTFILES_NONMATCHING,
-} list_files;
-
 static int filename_mask;	/* If zero, output nulls after filenames.  */
 static bool out_quiet;		/* Suppress all normal output. */
 static bool out_invert;		/* Print nonmatching stuff. */
@@ -936,6 +942,7 @@ static bool out_byte;		/* Print byte offsets. */
 static intmax_t out_before;	/* Lines of leading context. */
 static intmax_t out_after;	/* Lines of trailing context. */
 static bool count_matches;	/* Count matching lines.  */
+static int list_files;		/* List matching files.  */
 static bool no_filenames;	/* Suppress file names.  */
 static intmax_t max_count;	/* Stop after outputting this many
                                    lines from an input file.  */
@@ -1393,7 +1400,9 @@ grepbuf (char *beg, char const *lim)
   return outleft0 - outleft;
 }
 
-/* Search a given (non-directory) file.  Return a count of lines printed. */
+/* Search a given file.  Normally, return a count of lines printed;
+   but if the file is a directory and we search it recursively, then
+   return -2 if there was a match, and -1 otherwise.  */
 static intmax_t
 grep (int fd, struct stat const *st)
 {
@@ -1542,6 +1551,7 @@ static bool
 grepdirent (FTS *fts, FTSENT *ent, bool command_line)
 {
   bool follow;
+  int dirdesc;
   command_line &= ent->fts_level == FTS_ROOTLEVEL;
 
   if (ent->fts_info == FTS_DP)
@@ -1625,7 +1635,10 @@ grepdirent (FTS *fts, FTSENT *ent, bool command_line)
       abort ();
     }
 
-  return grepfile (fts->fts_cwd_fd, ent->fts_accpath, follow, command_line);
+  dirdesc = ((fts->fts_options & (FTS_NOCHDIR | FTS_CWDFD)) == FTS_CWDFD
+             ? fts->fts_cwd_fd
+             : AT_FDCWD);
+  return grepfile (dirdesc, ent->fts_accpath, follow, command_line);
 }
 
 /* True if errno is ERR after 'open ("symlink", ... O_NOFOLLOW ...)'.
@@ -1741,7 +1754,7 @@ grepdesc (int desc, bool command_line)
      so there is no risk of malfunction.  But even --max-count=2, with
      input==output, while there is no risk of infloop, there is a race
      condition that could result in "alternate" output.  */
-  if (!out_quiet && list_files == LISTFILES_NONE && 1 < max_count
+  if (!out_quiet && list_files == 0 && 1 < max_count
       && SAME_INODE (st, out_stat))
     {
       if (! suppress_errors)
@@ -1758,38 +1771,42 @@ grepdesc (int desc, bool command_line)
 #endif
 
   count = grep (desc, &st);
-  if (count_matches)
+  if (count < 0)
+    status = count + 2;
+  else
     {
-      if (out_file)
+      if (count_matches)
+        {
+          if (out_file)
+            {
+              print_filename ();
+              if (filename_mask)
+                print_sep (SEP_CHAR_SELECTED);
+              else
+                putchar_errno (0);
+            }
+          printf_errno ("%" PRIdMAX "\n", count);
+          if (line_buffered)
+            fflush_errno ();
+        }
+
+      status = !count;
+      if (list_files == 1 - 2 * status)
         {
           print_filename ();
-          if (filename_mask)
-            print_sep (SEP_CHAR_SELECTED);
-          else
-            putchar_errno (0);
+          putchar_errno ('\n' & filename_mask);
+          if (line_buffered)
+            fflush_errno ();
         }
-      printf_errno ("%" PRIdMAX "\n", count);
-      if (line_buffered)
-        fflush_errno ();
-    }
 
-  status = !count;
-  if ((list_files == LISTFILES_MATCHING && count > 0)
-      || (list_files == LISTFILES_NONMATCHING && count == 0))
-    {
-      print_filename ();
-      putchar_errno ('\n' & filename_mask);
-      if (line_buffered)
-        fflush_errno ();
-    }
-
-  if (desc == STDIN_FILENO)
-    {
-      off_t required_offset = outleft ? bufoffset : after_last_match;
-      if (required_offset != bufoffset
-          && lseek (desc, required_offset, SEEK_SET) < 0
-          && S_ISREG (st.st_mode))
-        suppressible_error (filename, errno);
+      if (desc == STDIN_FILENO)
+        {
+          off_t required_offset = outleft ? bufoffset : after_last_match;
+          if (required_offset != bufoffset
+              && lseek (desc, required_offset, SEEK_SET) < 0
+              && S_ISREG (st.st_mode))
+            suppressible_error (filename, errno);
+        }
     }
 
  closeout:
@@ -1798,13 +1815,15 @@ grepdesc (int desc, bool command_line)
   return status;
 }
 
+/* sgsh */
 static bool
-grep_command_line_arg (char const *arg)
+grep_command_line_arg (char const *arg, int sgshinputfd)
 {
   if (STREQ (arg, "-"))
     {
       filename = label ? label : _("(standard input)");
-      return grepdesc (STDIN_FILENO, true);
+      /* sgsh */
+      return grepdesc (sgshinputfd, true);
     }
   else
     {
@@ -2242,12 +2261,6 @@ main (int argc, char **argv)
   set_program_name (argv[0]);
   program_name = argv[0];
 
-  pagesize = getpagesize ();
-  if (pagesize == 0 || 2 * pagesize + 1 <= pagesize)
-    abort ();
-  bufalloc = (ALIGN_TO (INITIAL_BUFSIZE, pagesize) + pagesize + sizeof (uword));
-  buffer = xmalloc (bufalloc);
-
   keys = NULL;
   keycc = 0;
   with_filenames = false;
@@ -2420,11 +2433,11 @@ main (int argc, char **argv)
       case 'L':
         /* Like -l, except list files that don't contain matches.
            Inspired by the same option in Hume's gre. */
-        list_files = LISTFILES_NONMATCHING;
+        list_files = -1;
         break;
 
       case 'l':
-        list_files = LISTFILES_MATCHING;
+        list_files = 1;
         break;
 
       case 'm':
@@ -2615,13 +2628,13 @@ main (int argc, char **argv)
   /* POSIX says -c, -l and -q are mutually exclusive.  In this
      implementation, -q overrides -l and -L, which in turn override -c.  */
   if (exit_on_match)
-    list_files = LISTFILES_NONE;
-  if (exit_on_match || list_files != LISTFILES_NONE)
+    list_files = 0;
+  if (exit_on_match | list_files)
     {
       count_matches = false;
       done_on_match = true;
     }
-  out_quiet = count_matches || done_on_match;
+  out_quiet = count_matches | done_on_match;
 
   if (out_after < 0)
     out_after = default_context;
@@ -2715,8 +2728,34 @@ main (int argc, char **argv)
     }
 
   bool status = true;
+  /* sgsh */
+  int j = 0, sgshinputfd;
+  int ninputfds = -1;
+  int noutputfds = -1;
+  int *inputfds;
+  int *outputfds;
+  char sgshin[10];
+  char sgshout[11];
+
+  /* sgsh */
+  strcpy(sgshin, "SGSH_IN=1");
+  putenv(sgshin);
+  strcpy(sgshout, "SGSH_OUT=1");
+  putenv(sgshout);
+  sgsh_negotiate("grep", -1, -1, &inputfds, &ninputfds, &outputfds,
+                                                          &noutputfds);
+
+  /* sgsh */
+  assert(ninputfds > 0);
+  /* 5: matching, non-matching, files, lines, parts */
+  assert(noutputfds > 0 && noutputfds <= 5);
+
   do
-    status &= grep_command_line_arg (*files++);
+    {
+    /* sgsh */
+    if (STREQ (*files, "-")) sgshinputfd = inputfds[j++];
+    status &= grep_command_line_arg (*files++, sgshinputfd);
+    }
   while (*files != NULL);
 
   /* We register via atexit() to test stdout.  */
