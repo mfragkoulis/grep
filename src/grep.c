@@ -79,6 +79,30 @@ static bool suppress_errors;
 /* If nonzero, use color markers.  */
 static int color_option;
 
+/* sgsh: the number of output file descriptors */
+static int noutputfds;
+
+/* sgsh: record options passed to grep to configure output fds */
+static char options[4][2];
+/* sgsh: output file streams */
+static FILE *non_matching_files;	/* -L */
+static FILE *matching_files;		/* -l */
+static FILE *matching;			/* -w, default */
+static FILE *non_matching;		/* -v */
+
+/* sgsh: XXX future output file streams */
+static FILE *matching_i;		/* -i, -y */
+static FILE *matching_x;		/* -x */
+static FILE *matching_o;		/* -o */
+static FILE *matching_ix;		/* -i, -y */
+static FILE *matching_io;		/* -i, -y */
+
+static FILE *non_matching_i;		/* -i, -y */
+static FILE *non_matching_x;		/* -v */
+static FILE *non_matching_o;		/* -v */
+static FILE *non_matching_ix;		/* -v */
+static FILE *non_matching_io;		/* -v */
+
 /* Show only the part of a line matching the expression. */
 static bool only_matching;
 
@@ -304,17 +328,21 @@ static const struct color_cap color_dict[] =
 /* Saved errno value from failed output functions on stdout.  */
 static int stdout_errno;
 
+/* sgsh */
 static void
-putchar_errno (int c)
+putchar_errno (int c, FILE *stream)
 {
-  if (putchar (c) < 0)
+  //fprintf(stderr, "Write to fd: %d\n", fileno(stream), c + 'a');
+  if (fputc (c, stream) < 0)
     stdout_errno = errno;
 }
 
+/* sgsh: generalise function to write output to `stream' */
 static void
-fputs_errno (char const *s)
+fputs_errno (char const *s, FILE *stream)
 {
-  if (fputs (s, stdout) < 0)
+  //fprintf(stderr, "Write to fd: %d: %s\n", fileno(stream), s);
+  if (fputs (s, stream) < 0)
     stdout_errno = errno;
 }
 
@@ -328,17 +356,20 @@ printf_errno (char const *format, ...)
   va_end (ap);
 }
 
+/* sgsh: pass the output stream to write to as argument */
 static void
-fwrite_errno (void const *ptr, size_t size, size_t nmemb)
+fwrite_errno (void const *ptr, size_t size, size_t nmemb, FILE *stream)
 {
-  if (fwrite (ptr, size, nmemb, stdout) != nmemb)
+  //fprintf(stderr, "Write to fd: %d: %s\n", fileno(stream), (char *)ptr);
+  if (fwrite (ptr, size, nmemb, stream) != nmemb)
     stdout_errno = errno;
 }
 
+/* sgsh */
 static void
-fflush_errno (void)
+fflush_errno (FILE *stream)
 {
-  if (fflush (stdout) != 0)
+  if (fflush (stream) != 0)
     stdout_errno = errno;
 }
 
@@ -957,6 +988,7 @@ static char *lastout;		/* Pointer after last character output;
                                    NULL if no character has been output
                                    or if it's conceptually before bufbeg. */
 static intmax_t outleft;	/* Maximum number of lines to be output.  */
+//XXX treatment in sgsh
 static intmax_t pending;	/* Pending lines of output.
                                    Always kept 0 if out_quiet is true.  */
 static bool done_on_match;	/* Stop scanning file on first match.  */
@@ -980,27 +1012,31 @@ nlscan (char const *lim)
   lastnl = lim;
 }
 
-/* Print the current filename.  */
+/* Print the current filename.  
+ * sgsh */
 static void
-print_filename (void)
+print_filename (FILE *stream)
 {
+  //fprintf(stderr, "write to fd %d filename: %s\n", fileno(stream), filename);
   pr_sgr_start_if (filename_color);
-  fputs_errno (filename);
+  fputs_errno (filename, stream);
   pr_sgr_end_if (filename_color);
 }
 
 /* Print a character separator.  */
+/* sgsh: pass the output stream as argument */
 static void
-print_sep (char sep)
+print_sep (char sep, FILE *stream)
 {
   pr_sgr_start_if (sep_color);
-  putchar_errno (sep);
+  putchar_errno (sep, stream);
   pr_sgr_end_if (sep_color);
 }
 
 /* Print a line number or a byte offset.  */
+/* sgsh: pass the output stream to write to as argument */
 static void
-print_offset (uintmax_t pos, int min_width, const char *color)
+print_offset (uintmax_t pos, int min_width, const char *color, FILE *stream)
 {
   /* Do not rely on printf to print pos, since uintmax_t may be longer
      than long, and long long is not portable.  */
@@ -1021,7 +1057,7 @@ print_offset (uintmax_t pos, int min_width, const char *color)
       *--p = ' ';
 
   pr_sgr_start_if (color);
-  fwrite_errno (p, 1, buf + sizeof buf - p);
+  fwrite_errno (p, 1, buf + sizeof buf - p, stream);
   pr_sgr_end_if (color);
 }
 
@@ -1035,7 +1071,7 @@ print_offset (uintmax_t pos, int min_width, const char *color)
    Return true unless the line was suppressed due to an encoding error.  */
 
 static bool
-print_line_head (char *beg, size_t len, char const *lim, char sep)
+print_line_head (char *beg, size_t len, char const *lim, char sep, FILE *stream)
 {
   bool encoding_errors = false;
   if (binary_files != TEXT_BINARY_FILES)
@@ -1054,11 +1090,11 @@ print_line_head (char *beg, size_t len, char const *lim, char sep)
 
   if (out_file)
     {
-      print_filename ();
+      print_filename (stream);
       if (filename_mask)
         pending_sep = true;
       else
-        putchar_errno (0);
+        putchar_errno (0, stream);
     }
 
   if (out_line)
@@ -1070,8 +1106,8 @@ print_line_head (char *beg, size_t len, char const *lim, char sep)
           lastnl = lim;
         }
       if (pending_sep)
-        print_sep (sep);
-      print_offset (totalnl, 4, line_num_color);
+        print_sep (sep, stream);
+      print_offset (totalnl, 4, line_num_color, stream);
       pending_sep = true;
     }
 
@@ -1080,8 +1116,8 @@ print_line_head (char *beg, size_t len, char const *lim, char sep)
       uintmax_t pos = add_count (totalcc, beg - bufbeg);
       pos = dossified_pos (pos);
       if (pending_sep)
-        print_sep (sep);
-      print_offset (pos, 6, byte_num_color);
+        print_sep (sep, stream);
+      print_offset (pos, 6, byte_num_color, stream);
       pending_sep = true;
     }
 
@@ -1092,17 +1128,19 @@ print_line_head (char *beg, size_t len, char const *lim, char sep)
          (and its combining and wide characters)
          filenames and you're wasting your efforts.  */
       if (align_tabs)
-        fputs_errno ("\t\b");
+        fputs_errno ("\t\b", stream);
 
-      print_sep (sep);
+      print_sep (sep, stream);
     }
 
   return true;
 }
 
+/* sgsh: pass the stream to write to as argument */
 static char *
 print_line_middle (char *beg, char *lim,
-                   const char *line_color, const char *match_color)
+                   const char *line_color, const char *match_color,
+		   FILE *stream)
 {
   size_t match_size;
   size_t match_offset;
@@ -1138,7 +1176,7 @@ print_line_middle (char *beg, char *lim,
           if (only_matching)
             {
               char sep = out_invert ? SEP_CHAR_REJECTED : SEP_CHAR_SELECTED;
-              if (! print_line_head (b, match_size, lim, sep))
+              if (! print_line_head (b, match_size, lim, sep, stream))
                 return NULL;
             }
           else
@@ -1149,14 +1187,14 @@ print_line_middle (char *beg, char *lim,
                   cur = mid;
                   mid = NULL;
                 }
-              fwrite_errno (cur, 1, b - cur);
+              fwrite_errno (cur, 1, b - cur, stream);
             }
 
           pr_sgr_start_if (match_color);
-          fwrite_errno (b, 1, match_size);
+          fwrite_errno (b, 1, match_size, stream);
           pr_sgr_end_if (match_color);
           if (only_matching)
-            putchar_errno (eolbyte);
+            putchar_errno (eolbyte, stream);
         }
     }
 
@@ -1169,7 +1207,8 @@ print_line_middle (char *beg, char *lim,
 }
 
 static char *
-print_line_tail (char *beg, const char *lim, const char *line_color)
+print_line_tail (char *beg, const char *lim, const char *line_color,
+		FILE *stream)
 {
   size_t eol_size;
   size_t tail_size;
@@ -1181,7 +1220,7 @@ print_line_tail (char *beg, const char *lim, const char *line_color)
   if (tail_size > 0)
     {
       pr_sgr_start (line_color);
-      fwrite_errno (beg, 1, tail_size);
+      fwrite_errno (beg, 1, tail_size, stream);
       beg += tail_size;
       pr_sgr_end (line_color);
     }
@@ -1189,15 +1228,16 @@ print_line_tail (char *beg, const char *lim, const char *line_color)
   return beg;
 }
 
+/* sgsh: pass the output stream to write to as argument */
 static void
-prline (char *beg, char *lim, char sep)
+prline (char *beg, char *lim, char sep, FILE *stream)
 {
   bool matching;
   const char *line_color;
   const char *match_color;
 
   if (!only_matching)
-    if (! print_line_head (beg, lim - beg - 1, lim, sep))
+    if (! print_line_head (beg, lim - beg - 1, lim, sep, stream))
       return;
 
   matching = (sep == SEP_CHAR_SELECTED) ^ out_invert;
@@ -1219,7 +1259,7 @@ prline (char *beg, char *lim, char sep)
       /* We already know that non-matching lines have no match (to colorize). */
       if (matching && (only_matching || *match_color))
         {
-          beg = print_line_middle (beg, lim, line_color, match_color);
+          beg = print_line_middle (beg, lim, line_color, match_color, stream);
           if (! beg)
             return;
         }
@@ -1228,15 +1268,15 @@ prline (char *beg, char *lim, char sep)
         {
           /* This code is exercised at least when grep is invoked like this:
              echo k| GREP_COLORS='sl=01;32' src/grep k --color=always  */
-          beg = print_line_tail (beg, lim, line_color);
+          beg = print_line_tail (beg, lim, line_color, stream);
         }
     }
 
   if (!only_matching && lim > beg)
-    fwrite_errno (beg, 1, lim - beg);
+    fwrite_errno (beg, 1, lim - beg, stream);
 
   if (line_buffered)
-    fflush_errno ();
+    fflush_errno (stream);
 
   if (stdout_errno)
     error (EXIT_TROUBLE, stdout_errno, _("write error"));
@@ -1245,9 +1285,10 @@ prline (char *beg, char *lim, char sep)
 }
 
 /* Print pending lines of trailing context prior to LIM. Trailing context ends
-   at the next matching line when OUTLEFT is 0.  */
+   at the next matching line when OUTLEFT is 0.
+   sgsh: pass the output stream to write to as argument */
 static void
-prpending (char const *lim)
+prpending (char const *lim, FILE *stream)
 {
   if (!lastout)
     lastout = bufbeg;
@@ -1260,7 +1301,7 @@ prpending (char const *lim)
           || ((execute (lastout, nl + 1 - lastout,
                         &match_size, NULL) == (size_t) -1)
               == !out_invert))
-        prline (lastout, nl + 1, SEP_CHAR_REJECTED);
+        prline (lastout, nl + 1, SEP_CHAR_REJECTED, stream);
       else
         pending = 0;
     }
@@ -1268,16 +1309,17 @@ prpending (char const *lim)
 
 /* Output the lines between BEG and LIM.  Deal with context.  */
 static void
-prtext (char *beg, char *lim)
+prtext (char *beg, char *lim, FILE *stream, bool matching)
 {
   static bool used;	/* Avoid printing SEP_STR_GROUP before any output.  */
   char eol = eolbyte;
 
   if (!out_quiet && pending > 0)
-    prpending (beg);
+    prpending (beg, stream);
 
   char *p = beg;
 
+  /* sgsh */
   if (!out_quiet)
     {
       /* Deal with leading context.  */
@@ -1295,22 +1337,23 @@ prtext (char *beg, char *lim)
           && p != lastout && group_separator)
         {
           pr_sgr_start_if (sep_color);
-          fputs_errno (group_separator);
+          fputs_errno (group_separator, stream);
           pr_sgr_end_if (sep_color);
-          putchar_errno ('\n');
+          putchar_errno ('\n', stream);
         }
 
       while (p < beg)
         {
           char *nl = memchr (p, eol, beg - p);
           nl++;
-          prline (p, nl, SEP_CHAR_REJECTED);
+          prline (p, nl, SEP_CHAR_REJECTED, stream);
           p = nl;
         }
     }
 
   intmax_t n;
-  if (out_invert)
+  /* sgsh */
+  if (!matching)
     {
       /* One or more lines are output.  */
       for (n = 0; p < lim && n < outleft; n++)
@@ -1318,7 +1361,7 @@ prtext (char *beg, char *lim)
           char *nl = memchr (p, eol, lim - p);
           nl++;
           if (!out_quiet)
-            prline (p, nl, SEP_CHAR_SELECTED);
+            prline (p, nl, SEP_CHAR_SELECTED, stream);
           p = nl;
         }
     }
@@ -1326,15 +1369,16 @@ prtext (char *beg, char *lim)
     {
       /* Just one line is output.  */
       if (!out_quiet)
-        prline (beg, lim, SEP_CHAR_SELECTED);
+        prline (beg, lim, SEP_CHAR_SELECTED, stream);
       n = 1;
       p = lim;
+      // XXX this signals whether a match was achieved
+      outleft -= n;
     }
 
   after_last_match = bufoffset - (buflim - p);
   pending = out_quiet ? 0 : MAX (0, out_after);
   used = true;
-  outleft -= n;
 }
 
 /* Replace all NUL bytes in buffer P (which ends at LIM) with EOL.
@@ -1373,21 +1417,28 @@ grepbuf (char *beg, char const *lim)
       size_t match_offset = execute (p, lim - p, &match_size, NULL);
       if (match_offset == (size_t) -1)
         {
-          if (!out_invert)
+          /* sgsh */
+          if (!non_matching)
             break;
           match_offset = lim - p;
           match_size = 0;
         }
       char *b = p + match_offset;
       endp = b + match_size;
-      /* Avoid matching the empty line at the end of the buffer. */
-      if (!out_invert && b == lim)
-        break;
-      if (!out_invert || p < b)
+      if (match_size > 0 || p < b)
         {
-          char *prbeg = out_invert ? p : b;
-          char *prend = out_invert ? b : endp;
-          prtext (prbeg, prend);
+          //char *prbeg = out_invert ? p : b;
+          //char *prend = out_invert ? b : endp;
+          //prtext (prbeg, prend);
+	  if ((out_quiet || non_matching) && match_size == 0) {
+	    prtext(p, b, non_matching, false);
+	  }
+	  if ((out_quiet || matching) && match_size > 0) {
+            /* Avoid matching the empty line at the end of the buffer. */
+            if (b == lim)
+              break;
+	    prtext(b, endp, matching, true);
+	  }
           if (!outleft || done_on_match)
             {
               if (exit_on_match)
@@ -1490,7 +1541,7 @@ grep (int fd, struct stat const *st)
           if (outleft)
             nlines += grepbuf (beg, lim);
           if (pending)
-            prpending (lim);
+            prpending (lim, stdout);
           if ((!outleft && !pending)
               || (done_on_match && MAX (0, nlines_first_null) < nlines))
             goto finish_grep;
@@ -1531,7 +1582,7 @@ grep (int fd, struct stat const *st)
       if (outleft)
         nlines += grepbuf (bufbeg + save - residue, buflim);
       if (pending)
-        prpending (buflim);
+        prpending (buflim, stdout);
     }
 
  finish_grep:
@@ -1542,7 +1593,7 @@ grep (int fd, struct stat const *st)
     {
       printf_errno (_("Binary file %s matches\n"), filename);
       if (line_buffered)
-        fflush_errno ();
+        fflush_errno (stdout);
     }
   return nlines;
 }
@@ -1779,25 +1830,33 @@ grepdesc (int desc, bool command_line)
         {
           if (out_file)
             {
-              print_filename ();
+	      //XXX sgsh
+              print_filename (stdout);
               if (filename_mask)
-                print_sep (SEP_CHAR_SELECTED);
+                print_sep (SEP_CHAR_SELECTED, stdout);
               else
-                putchar_errno (0);
+                putchar_errno (0, stdout);
             }
           printf_errno ("%" PRIdMAX "\n", count);
           if (line_buffered)
-            fflush_errno ();
+            fflush_errno (stdout);
         }
 
       status = !count;
-      if (list_files == 1 - 2 * status)
-        {
-          print_filename ();
-          putchar_errno ('\n' & filename_mask);
+      if (!status && matching_files)
+	{
+          print_filename (matching_files);
+          putchar_errno ('\n' & filename_mask, matching_files);
           if (line_buffered)
-            fflush_errno ();
-        }
+            fflush_errno (matching_files);
+	}
+      if (status && non_matching_files)
+	{
+          print_filename (non_matching_files);
+          putchar_errno ('\n' & filename_mask, non_matching_files);
+          if (line_buffered)
+            fflush_errno (non_matching_files);
+	}
 
       if (desc == STDIN_FILENO)
         {
@@ -2297,6 +2356,9 @@ main (int argc, char **argv)
   compile = matchers[0].compile;
   execute = matchers[0].execute;
 
+  /* sgsh: default: the lines where the pattern matched */
+  noutputfds = 0;
+
   while (prev_optind = optind,
          (opt = get_nondigit_option (argc, argv, &default_context)) != -1)
     switch (opt)
@@ -2428,16 +2490,27 @@ main (int argc, char **argv)
       case 'i':
       case 'y':			/* For old-timers . . . */
         match_icase = true;
+	/* sgsh */
+	//noutputfds++;
         break;
 
       case 'L':
         /* Like -l, except list files that don't contain matches.
            Inspired by the same option in Hume's gre. */
+	/* sgsh: XXX list_files is no more representative
+	   since sgsh provides a separate output stream for
+	   matches and non-matches */
         list_files = -1;
+	/* sgsh */
+	strcpy(options[noutputfds], "L");
+	noutputfds++;
         break;
 
       case 'l':
         list_files = 1;
+	/* sgsh */
+	strcpy(options[noutputfds], "l");
+	noutputfds++;
         break;
 
       case 'm':
@@ -2458,6 +2531,8 @@ main (int argc, char **argv)
 
       case 'o':
         only_matching = true;
+	/* sgsh */
+	//noutputfds++;
         break;
 
       case 'q':
@@ -2479,14 +2554,22 @@ main (int argc, char **argv)
 
       case 'v':
         out_invert = true;
+	/* sgsh */
+	strcpy(options[noutputfds], "v");
+	noutputfds++;
         break;
 
       case 'w':
         match_words = true;
+	/* sgsh */
+	strcpy(options[noutputfds], "w");
+	noutputfds++;
         break;
 
       case 'x':
         match_lines = true;
+	/* sgsh */
+	//noutputfds++;
         break;
 
       case 'Z':
@@ -2731,30 +2814,62 @@ main (int argc, char **argv)
   /* sgsh */
   int j = 0, sgshinputfd;
   int ninputfds = -1;
-  int noutputfds = -1;
   int *inputfds;
   int *outputfds;
-  char sgshin[10];
-  char sgshout[11];
 
   /* sgsh */
-  strcpy(sgshin, "SGSH_IN=1");
-  putenv(sgshin);
-  strcpy(sgshout, "SGSH_OUT=1");
-  putenv(sgshout);
-  sgsh_negotiate("grep", -1, -1, &inputfds, &ninputfds, &outputfds,
-                                                          &noutputfds);
+  sgsh_negotiate("grep", &ninputfds, &noutputfds, &inputfds, &outputfds);
 
   /* sgsh */
-  assert(ninputfds > 0);
-  /* 5: matching, non-matching, files, lines, parts */
-  assert(noutputfds > 0 && noutputfds <= 5);
+  assert(ninputfds >= 0);
+  /* 4: matching files, non-matching files,
+        matching lines, non-matching lines */
+  assert(noutputfds >= 0 && noutputfds <= 4);
 
+  non_matching_files = matching_files = matching = non_matching = NULL;
+  for (j = 0; j < noutputfds; j++)
+    {
+      if (!strcmp(options[j], "l"))
+        {
+	  if (j == 0)
+	    matching_files = stdout;
+	  else
+	    matching_files = fdopen(outputfds[j], "w");
+	}
+      else if (!strcmp(options[j], "L"))
+        {
+	  if (j == 0)
+	    non_matching_files = stdout;
+	  else
+	    non_matching_files = fdopen(outputfds[j], "w");
+        }
+      else if (!strcmp(options[j], "w"))
+        {
+          out_quiet = 0;
+	  if (j == 0)
+	    matching = stdout;
+	  else
+	    matching = fdopen(outputfds[j], "w");
+        }
+      else if (!strcmp(options[j], "v"))
+        {
+          out_quiet = 0;
+	  if (j == 0)
+	    non_matching = stdout;
+	  else
+	    non_matching = fdopen(outputfds[j], "w");
+        }
+    }
+
+  j = 0;
   do
     {
-    /* sgsh */
-    if (STREQ (*files, "-")) sgshinputfd = inputfds[j++];
-    status &= grep_command_line_arg (*files++, sgshinputfd);
+      /* sgsh */
+      if (ninputfds > 0)
+        assert(j < ninputfds);
+      if (STREQ (*files, "-"))
+	sgshinputfd = inputfds[j++];
+      status &= grep_command_line_arg (*files++, sgshinputfd);
     }
   while (*files != NULL);
 
