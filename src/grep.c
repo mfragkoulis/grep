@@ -1425,19 +1425,29 @@ grepbuf (char *beg, char const *lim)
         }
       char *b = p + match_offset;
       endp = b + match_size;
+      /* sgsh */
       if (match_size > 0 || p < b)
         {
           //char *prbeg = out_invert ? p : b;
           //char *prend = out_invert ? b : endp;
           //prtext (prbeg, prend);
-	  if ((out_quiet || non_matching) && match_size == 0) {
-	    prtext(p, b, non_matching, false);
+	  //fprintf(stderr, "match_size: %d, match_offset: %d, p: %s, b: %s, lim: %s, noutputfds: %d\n",
+	  //		  match_size, match_offset, p, b, lim, noutputfds);
+	  if ((out_quiet || non_matching || noutputfds == 0)
+			  && match_size == 0) {
+	    if (noutputfds > 0)
+	      prtext(p, b, non_matching, false);
+	    else
+	      prtext(p, b, stdout, false);
 	  }
-	  if ((out_quiet || matching) && match_size > 0) {
+	  if ((out_quiet || matching || noutputfds == 0) && match_size > 0) {
             /* Avoid matching the empty line at the end of the buffer. */
             if (b == lim)
               break;
-	    prtext(b, endp, matching, true);
+	    if (noutputfds > 0)
+	      prtext(b, endp, matching, true);
+	    else
+	      prtext(b, endp, stdout, true);
 	  }
           if (!outleft || done_on_match)
             {
