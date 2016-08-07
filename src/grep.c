@@ -2368,6 +2368,7 @@ main (int argc, char **argv)
 
   /* sgsh: default: the lines where the pattern matched */
   noutputfds = 0;
+  bool inputpattern = false;
 
   while (prev_optind = optind,
          (opt = get_nondigit_option (argc, argv, &default_context)) != -1)
@@ -2469,7 +2470,15 @@ main (int argc, char **argv)
         break;
 
       case 'f':
-        fp = STREQ (optarg, "-") ? stdin : fopen (optarg, O_TEXT ? "rt" : "r");
+	/* sgsh */
+        if STREQ (optarg, "-")
+	  {
+	    inputpattern = true;
+	    break;
+	  }
+	else
+	  fp = fopen (optarg, O_TEXT ? "rt" : "r");
+
         if (!fp)
           error (EXIT_TROUBLE, errno, "%s", optarg);
         for (keyalloc = 1; keyalloc <= keycc + 1; keyalloc *= 2)
@@ -2871,14 +2880,42 @@ main (int argc, char **argv)
         }
     }
 
-  j = 0;
-  do
+  if (inputpattern == true)	// Copied from -f
     {
+      fp = stdin;
+      if (!fp)
+        error (EXIT_TROUBLE, errno, "%s", optarg);
+      for (keyalloc = 1; keyalloc <= keycc + 1; keyalloc *= 2)
+	;
+      keys = xrealloc (keys, keyalloc);
+      oldcc = keycc;
+      while ((cc = fread (keys + keycc, 1, keyalloc - 1 - keycc, fp)) != 0)
+        {
+	  keycc += cc;
+	  if (keycc == keyalloc - 1)
+	    keys = x2nrealloc (keys, &keyalloc, sizeof *keys);
+        }
+      fread_errno = errno;
+      if (ferror (fp))
+	error (EXIT_TROUBLE, fread_errno, "%s", optarg);
+      /* Append final newline if file ended in non-newline. */
+      if (oldcc != keycc && keys[keycc - 1] != '\n')
+	keys[keycc++] = '\n';
+      j = 1;
+    }
+  else
+    j = 0;
+
+  do
+  {
       /* sgsh */
       if (ninputfds > 0)
         assert(j < ninputfds);
       if (STREQ (*files, "-"))
-	sgshinputfd = inputfds[j++];
+	if (j == 0)
+	  sgshinputfd = STDIN_FILENO;
+        else
+	  sgshinputfd = inputfds[j++];
       status &= grep_command_line_arg (*files++, sgshinputfd);
     }
   while (*files != NULL);
