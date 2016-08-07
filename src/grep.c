@@ -2695,6 +2695,44 @@ main (int argc, char **argv)
   if (show_help)
     usage (EXIT_SUCCESS);
 
+  /* sgsh */
+  int j = 0, sgshinputfd;
+  int ninputfds = -1;
+  int *inputfds;
+  int *outputfds;
+
+  /* sgsh */
+  sgsh_negotiate("grep", &ninputfds, &noutputfds, &inputfds, &outputfds);
+
+  /* sgsh */
+  assert(ninputfds >= 0);
+  /* 4: matching files, non-matching files,
+        matching lines, non-matching lines */
+  assert(noutputfds >= 0 && noutputfds <= 4);
+
+  if (inputpattern == true)	// Copied from -f
+    {
+      fp = stdin;
+      if (!fp)
+        error (EXIT_TROUBLE, errno, "%s", optarg);
+      for (keyalloc = 1; keyalloc <= keycc + 1; keyalloc *= 2)
+	;
+      keys = xrealloc (keys, keyalloc);
+      oldcc = keycc;
+      while ((cc = fread (keys + keycc, 1, keyalloc - 1 - keycc, fp)) != 0)
+        {
+	  keycc += cc;
+	  if (keycc == keyalloc - 1)
+	    keys = x2nrealloc (keys, &keyalloc, sizeof *keys);
+        }
+      fread_errno = errno;
+      if (ferror (fp))
+	error (EXIT_TROUBLE, fread_errno, "%s", optarg);
+      /* Append final newline if file ended in non-newline. */
+      if (oldcc != keycc && keys[keycc - 1] != '\n')
+	keys[keycc++] = '\n';
+    }
+
   bool possibly_tty = false;
   struct stat tmp_stat;
   if (! exit_on_match && fstat (STDOUT_FILENO, &tmp_stat) == 0)
@@ -2831,20 +2869,6 @@ main (int argc, char **argv)
 
   bool status = true;
   /* sgsh */
-  int j = 0, sgshinputfd;
-  int ninputfds = -1;
-  int *inputfds;
-  int *outputfds;
-
-  /* sgsh */
-  sgsh_negotiate("grep", &ninputfds, &noutputfds, &inputfds, &outputfds);
-
-  /* sgsh */
-  assert(ninputfds >= 0);
-  /* 4: matching files, non-matching files,
-        matching lines, non-matching lines */
-  assert(noutputfds >= 0 && noutputfds <= 4);
-
   non_matching_files = matching_files = matching = non_matching = NULL;
   for (j = 0; j < noutputfds; j++)
     {
@@ -2880,37 +2904,14 @@ main (int argc, char **argv)
         }
     }
 
-  if (inputpattern == true)	// Copied from -f
-    {
-      fp = stdin;
-      if (!fp)
-        error (EXIT_TROUBLE, errno, "%s", optarg);
-      for (keyalloc = 1; keyalloc <= keycc + 1; keyalloc *= 2)
-	;
-      keys = xrealloc (keys, keyalloc);
-      oldcc = keycc;
-      while ((cc = fread (keys + keycc, 1, keyalloc - 1 - keycc, fp)) != 0)
-        {
-	  keycc += cc;
-	  if (keycc == keyalloc - 1)
-	    keys = x2nrealloc (keys, &keyalloc, sizeof *keys);
-        }
-      fread_errno = errno;
-      if (ferror (fp))
-	error (EXIT_TROUBLE, fread_errno, "%s", optarg);
-      /* Append final newline if file ended in non-newline. */
-      if (oldcc != keycc && keys[keycc - 1] != '\n')
-	keys[keycc++] = '\n';
-      j = 1;
-    }
+  if (inputpattern == true)
+    j = 1;
   else
     j = 0;
 
   do
-  {
+    {
       /* sgsh */
-      if (ninputfds > 0)
-        assert(j < ninputfds);
       if (STREQ (*files, "-"))
 	if (j == 0)
 	  sgshinputfd = STDIN_FILENO;
