@@ -2452,6 +2452,7 @@ main (int argc, char **argv)
 
       case 'c':
         count_matches = true;
+	noutputfds++;
         break;
 
       case 'd':
@@ -2870,6 +2871,7 @@ main (int argc, char **argv)
   bool status = true;
   /* sgsh */
   non_matching_files = matching_files = matching = non_matching = NULL;
+  // -c is not combinable; no need to set output stream; stdout suffices
   for (j = 0; j < noutputfds; j++)
     {
       if (!strcmp(options[j], "l"))
