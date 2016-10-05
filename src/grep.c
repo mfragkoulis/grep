@@ -2702,8 +2702,23 @@ main (int argc, char **argv)
   int *inputfds;
   int *outputfds;
 
-  /* sgsh */
-  sgsh_negotiate("grep", &ninputfds, &noutputfds, &inputfds, &outputfds);
+  char negotiation_title[100];
+  if (argc >= 3)
+    snprintf(negotiation_title, 100, "%s %s %s",
+	argv[0], argv[1], argv[2]);
+  else if (argc == 2)
+    snprintf(negotiation_title, 100, "%s %s",
+	argv[0], argv[1]);
+  else
+    snprintf(negotiation_title, 100, "%s", argv[0]);
+
+  int exit_status;
+  if ((exit_status = sgsh_negotiate(negotiation_title,
+			  &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0)
+    {
+      printf("sgsh negotiation failed with status code %d.\n", exit_status);
+      exit(1);
+    }
 
   /* sgsh */
   assert(ninputfds >= 0);
