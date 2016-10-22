@@ -2582,8 +2582,11 @@ main (int argc, char **argv)
       case 'w':
         match_words = true;
 	/* sgsh */
-	strcpy(options[noutputfds], "w");
-	noutputfds++;
+	if (!count_matches)
+	  {
+	    strcpy(options[noutputfds], "w");
+	    noutputfds++;
+	  }
         break;
 
       case 'x':
