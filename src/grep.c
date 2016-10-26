@@ -2830,13 +2830,15 @@ main (int argc, char **argv)
      (1) case is ignored (where grep is typically faster), or
      (2) the pattern has an encoding error (where fgrep might not work).  */
   if (compile == Fcompile
-      && (MB_CUR_MAX <= 1
-          ? match_words
-          : match_icase || contains_encoding_error (keys, keycc)))
+      //&& (MB_CUR_MAX <= 1
+      //    ? match_words
+      //    : match_icase || 
+      && contains_encoding_error (keys, keycc))
+		  //)
     {
-      fprintf(stderr, "fgrep to grep: match_words: %d, match_icase: %d: encoding error: %d",
+      fprintf(stderr, "fgrep to grep: match_words: %d, match_icase: %d: encoding error: %d, MB_CUR_MAX: %d\n",
 		      match_words, match_icase,
-		      contains_encoding_error(keys, keycc));
+		      contains_encoding_error(keys, keycc), MB_CUR_MAX);
       size_t new_keycc;
       char *new_keys;
       fgrep_to_grep_pattern (keycc, keys, &new_keycc, &new_keys);
