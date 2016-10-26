@@ -2834,6 +2834,9 @@ main (int argc, char **argv)
           ? match_words
           : match_icase || contains_encoding_error (keys, keycc)))
     {
+      fprintf(stderr, "fgrep to grep: match_words: %d, match_icase: %d: encoding error: %d",
+		      match_words, match_icase,
+		      contains_encoding_error(keys, keycc));
       size_t new_keycc;
       char *new_keys;
       fgrep_to_grep_pattern (keycc, keys, &new_keycc, &new_keys);
