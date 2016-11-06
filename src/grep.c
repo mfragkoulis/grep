@@ -2938,10 +2938,12 @@ main (int argc, char **argv)
     {
       /* sgsh */
       if (STREQ (*files, "-"))
-	if (j == 0)
-	  sgshinputfd = STDIN_FILENO;
-        else
-	  sgshinputfd = inputfds[j++];
+        {
+	  if (j == 0)
+	    sgshinputfd = STDIN_FILENO;
+          else
+	    sgshinputfd = inputfds[j++];
+        }
       status &= grep_command_line_arg (*files++, sgshinputfd);
     }
   while (*files != NULL);
