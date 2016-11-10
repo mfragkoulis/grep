@@ -2836,9 +2836,9 @@ main (int argc, char **argv)
       && contains_encoding_error (keys, keycc))
 		  //)
     {
-      fprintf(stderr, "fgrep to grep: match_words: %d, match_icase: %d: encoding error: %d, MB_CUR_MAX: %d\n",
-		      match_words, match_icase,
-		      contains_encoding_error(keys, keycc), MB_CUR_MAX);
+      //fprintf(stderr, "fgrep to grep: match_words: %d, match_icase: %d: encoding error: %d, MB_CUR_MAX: %d\n",
+	//	      match_words, match_icase,
+	//	      contains_encoding_error(keys, keycc), MB_CUR_MAX);
       size_t new_keycc;
       char *new_keys;
       fgrep_to_grep_pattern (keycc, keys, &new_keycc, &new_keys);
@@ -2875,6 +2875,7 @@ main (int argc, char **argv)
     devices = READ_DEVICES;
 
   char *const *files;
+  char *stdin_only[ninputfds ? ninputfds + 1 - inputpattern : 1];
   if (optind < argc)
     {
       files = argv + optind;
@@ -2885,9 +2886,12 @@ main (int argc, char **argv)
       files = cwd_only;
       omit_dot_slash = true;
     }
-  else
+  else if (ninputfds - inputpattern > 0)
     {
-      static char *const stdin_only[] = { (char *) "-", NULL };
+      int k;
+      for (k = 0; k < ninputfds - inputpattern; k++)
+	stdin_only[k] = (char *) "-";
+      stdin_only[ninputfds - inputpattern] = NULL;
       files = stdin_only;
     }
 
