@@ -50,9 +50,9 @@
 #include "xalloc.h"
 #include "xstrtol.h"
 
-/*  sgsh negotiate API (fix -I) */
+/*  dgsh negotiate API (fix -I) */
 #include <assert.h>
-#include "sgsh-negotiate.h"
+#include "dgsh-negotiate.h"
 
 #define SEP_CHAR_SELECTED ':'
 #define SEP_CHAR_REJECTED '-'
@@ -79,18 +79,18 @@ static bool suppress_errors;
 /* If nonzero, use color markers.  */
 static int color_option;
 
-/* sgsh: the number of output file descriptors */
+/* dgsh: the number of output file descriptors */
 static int noutputfds;
 
-/* sgsh: record options passed to grep to configure output fds */
+/* dgsh: record options passed to grep to configure output fds */
 static char options[4][2];
-/* sgsh: output file streams */
+/* dgsh: output file streams */
 static FILE *non_matching_files;	/* -L */
 static FILE *matching_files;		/* -l */
 static FILE *matching;			/* -w, default */
 static FILE *non_matching;		/* -v */
 
-/* sgsh: XXX future output file streams */
+/* dgsh: XXX future output file streams */
 static FILE *matching_i;		/* -i, -y */
 static FILE *matching_x;		/* -x */
 static FILE *matching_o;		/* -o */
@@ -328,7 +328,7 @@ static const struct color_cap color_dict[] =
 /* Saved errno value from failed output functions on stdout.  */
 static int stdout_errno;
 
-/* sgsh */
+/* dgsh */
 static void
 putchar_errno (int c, FILE *stream)
 {
@@ -337,7 +337,7 @@ putchar_errno (int c, FILE *stream)
     stdout_errno = errno;
 }
 
-/* sgsh: generalise function to write output to `stream' */
+/* dgsh: generalise function to write output to `stream' */
 static void
 fputs_errno (char const *s, FILE *stream)
 {
@@ -356,7 +356,7 @@ printf_errno (char const *format, ...)
   va_end (ap);
 }
 
-/* sgsh: pass the output stream to write to as argument */
+/* dgsh: pass the output stream to write to as argument */
 static void
 fwrite_errno (void const *ptr, size_t size, size_t nmemb, FILE *stream)
 {
@@ -365,7 +365,7 @@ fwrite_errno (void const *ptr, size_t size, size_t nmemb, FILE *stream)
     stdout_errno = errno;
 }
 
-/* sgsh */
+/* dgsh */
 static void
 fflush_errno (FILE *stream)
 {
@@ -988,7 +988,7 @@ static char *lastout;		/* Pointer after last character output;
                                    NULL if no character has been output
                                    or if it's conceptually before bufbeg. */
 static intmax_t outleft;	/* Maximum number of lines to be output.  */
-//XXX treatment in sgsh
+//XXX treatment in dgsh
 static intmax_t pending;	/* Pending lines of output.
                                    Always kept 0 if out_quiet is true.  */
 static bool done_on_match;	/* Stop scanning file on first match.  */
@@ -1013,7 +1013,7 @@ nlscan (char const *lim)
 }
 
 /* Print the current filename.  
- * sgsh */
+ * dgsh */
 static void
 print_filename (FILE *stream)
 {
@@ -1024,7 +1024,7 @@ print_filename (FILE *stream)
 }
 
 /* Print a character separator.  */
-/* sgsh: pass the output stream as argument */
+/* dgsh: pass the output stream as argument */
 static void
 print_sep (char sep, FILE *stream)
 {
@@ -1034,7 +1034,7 @@ print_sep (char sep, FILE *stream)
 }
 
 /* Print a line number or a byte offset.  */
-/* sgsh: pass the output stream to write to as argument */
+/* dgsh: pass the output stream to write to as argument */
 static void
 print_offset (uintmax_t pos, int min_width, const char *color, FILE *stream)
 {
@@ -1136,7 +1136,7 @@ print_line_head (char *beg, size_t len, char const *lim, char sep, FILE *stream)
   return true;
 }
 
-/* sgsh: pass the stream to write to as argument */
+/* dgsh: pass the stream to write to as argument */
 static char *
 print_line_middle (char *beg, char *lim,
                    const char *line_color, const char *match_color,
@@ -1228,7 +1228,7 @@ print_line_tail (char *beg, const char *lim, const char *line_color,
   return beg;
 }
 
-/* sgsh: pass the output stream to write to as argument */
+/* dgsh: pass the output stream to write to as argument */
 static void
 prline (char *beg, char *lim, char sep, FILE *stream)
 {
@@ -1286,7 +1286,7 @@ prline (char *beg, char *lim, char sep, FILE *stream)
 
 /* Print pending lines of trailing context prior to LIM. Trailing context ends
    at the next matching line when OUTLEFT is 0.
-   sgsh: pass the output stream to write to as argument */
+   dgsh: pass the output stream to write to as argument */
 static void
 prpending (char const *lim, FILE *stream)
 {
@@ -1319,7 +1319,7 @@ prtext (char *beg, char *lim, FILE *stream, bool matching)
 
   char *p = beg;
 
-  /* sgsh */
+  /* dgsh */
   if (!out_quiet)
     {
       /* Deal with leading context.  */
@@ -1352,7 +1352,7 @@ prtext (char *beg, char *lim, FILE *stream, bool matching)
     }
 
   intmax_t n;
-  /* sgsh */
+  /* dgsh */
   if (!matching)
     {
       /* One or more lines are output.  */
@@ -1417,7 +1417,7 @@ grepbuf (char *beg, char const *lim)
       size_t match_offset = execute (p, lim - p, &match_size, NULL);
       if (match_offset == (size_t) -1)
         {
-          /* sgsh */
+          /* dgsh */
           if (!non_matching)
             break;
           match_offset = lim - p;
@@ -1425,7 +1425,7 @@ grepbuf (char *beg, char const *lim)
         }
       char *b = p + match_offset;
       endp = b + match_size;
-      /* sgsh */
+      /* dgsh */
       if (b < endp || p < b)
         {
           //char *prbeg = out_invert ? p : b;
@@ -1840,7 +1840,7 @@ grepdesc (int desc, bool command_line)
         {
           if (out_file)
             {
-	      //XXX sgsh
+	      //XXX dgsh
               print_filename (stdout);
               if (filename_mask)
                 print_sep (SEP_CHAR_SELECTED, stdout);
@@ -1884,15 +1884,15 @@ grepdesc (int desc, bool command_line)
   return status;
 }
 
-/* sgsh */
+/* dgsh */
 static bool
-grep_command_line_arg (char const *arg, int sgshinputfd)
+grep_command_line_arg (char const *arg, int dgshinputfd)
 {
   if (STREQ (arg, "-"))
     {
       filename = label ? label : _("(standard input)");
-      /* sgsh */
-      return grepdesc (sgshinputfd, true);
+      /* dgsh */
+      return grepdesc (dgshinputfd, true);
     }
   else
     {
@@ -2366,7 +2366,7 @@ main (int argc, char **argv)
   compile = matchers[0].compile;
   execute = matchers[0].execute;
 
-  /* sgsh: default: the lines where the pattern matched */
+  /* dgsh: default: the lines where the pattern matched */
   noutputfds = 0;
   bool inputpattern = false;
 
@@ -2471,7 +2471,7 @@ main (int argc, char **argv)
         break;
 
       case 'f':
-	/* sgsh */
+	/* dgsh */
         if STREQ (optarg, "-")
 	  {
 	    inputpattern = true;
@@ -2510,25 +2510,25 @@ main (int argc, char **argv)
       case 'i':
       case 'y':			/* For old-timers . . . */
         match_icase = true;
-	/* sgsh */
+	/* dgsh */
 	//noutputfds++;
         break;
 
       case 'L':
         /* Like -l, except list files that don't contain matches.
            Inspired by the same option in Hume's gre. */
-	/* sgsh: XXX list_files is no more representative
-	   since sgsh provides a separate output stream for
+	/* dgsh: XXX list_files is no more representative
+	   since dgsh provides a separate output stream for
 	   matches and non-matches */
         list_files = -1;
-	/* sgsh */
+	/* dgsh */
 	strcpy(options[noutputfds], "L");
 	noutputfds++;
         break;
 
       case 'l':
         list_files = 1;
-	/* sgsh */
+	/* dgsh */
 	strcpy(options[noutputfds], "l");
 	noutputfds++;
         break;
@@ -2551,7 +2551,7 @@ main (int argc, char **argv)
 
       case 'o':
         only_matching = true;
-	/* sgsh */
+	/* dgsh */
 	//noutputfds++;
         break;
 
@@ -2574,14 +2574,14 @@ main (int argc, char **argv)
 
       case 'v':
         out_invert = true;
-	/* sgsh */
+	/* dgsh */
 	strcpy(options[noutputfds], "v");
 	noutputfds++;
         break;
 
       case 'w':
         match_words = true;
-	/* sgsh */
+	/* dgsh */
 	if (!count_matches)
 	  {
 	    strcpy(options[noutputfds], "w");
@@ -2591,7 +2591,7 @@ main (int argc, char **argv)
 
       case 'x':
         match_lines = true;
-	/* sgsh */
+	/* dgsh */
 	//noutputfds++;
         break;
 
@@ -2699,8 +2699,8 @@ main (int argc, char **argv)
   if (show_help)
     usage (EXIT_SUCCESS);
 
-  /* sgsh */
-  int j = 0, sgshinputfd;
+  /* dgsh */
+  int j = 0, dgshinputfd;
   int ninputfds = -1;
   int *inputfds;
   int *outputfds;
@@ -2716,14 +2716,14 @@ main (int argc, char **argv)
     snprintf(negotiation_title, 100, "%s", argv[0]);
 
   int exit_status;
-  if ((exit_status = sgsh_negotiate(negotiation_title,
+  if ((exit_status = dgsh_negotiate(negotiation_title,
 			  &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0)
     {
-      printf("sgsh negotiation failed with status code %d.\n", exit_status);
+      printf("dgsh negotiation failed with status code %d.\n", exit_status);
       exit(1);
     }
 
-  /* sgsh */
+  /* dgsh */
   assert(ninputfds >= 0);
   /* 4: matching files, non-matching files,
         matching lines, non-matching lines */
@@ -2896,7 +2896,7 @@ main (int argc, char **argv)
     }
 
   bool status = true;
-  /* sgsh */
+  /* dgsh */
   non_matching_files = matching_files = matching = non_matching = NULL;
   // -c is not combinable; no need to set output stream; stdout suffices
   for (j = 0; j < noutputfds; j++)
@@ -2940,15 +2940,15 @@ main (int argc, char **argv)
 
   do
     {
-      /* sgsh */
+      /* dgsh */
       if (STREQ (*files, "-"))
         {
 	  if (j == 0)
-	    sgshinputfd = STDIN_FILENO;
+	    dgshinputfd = STDIN_FILENO;
           else
-	    sgshinputfd = inputfds[j++];
+	    dgshinputfd = inputfds[j++];
         }
-      status &= grep_command_line_arg (*files++, sgshinputfd);
+      status &= grep_command_line_arg (*files++, dgshinputfd);
     }
   while (*files != NULL);
 
