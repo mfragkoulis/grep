@@ -52,6 +52,7 @@
 
 /*  dgsh negotiate API (fix -I) */
 #include <assert.h>
+#include <err.h>
 #include "dgsh-negotiate.h"
 
 #define SEP_CHAR_SELECTED ':'
@@ -2718,10 +2719,7 @@ main (int argc, char **argv)
   int exit_status;
   if ((exit_status = dgsh_negotiate(negotiation_title,
 			  &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0)
-    {
-      printf("dgsh negotiation failed with status code %d.\n", exit_status);
-      exit(1);
-    }
+      errx(1, "dgsh negotiation failed for grep with status code %d.\n", exit_status);
 
   /* dgsh */
   assert(ninputfds >= 0);
