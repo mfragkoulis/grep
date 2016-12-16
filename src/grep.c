@@ -88,22 +88,22 @@ static char options[4][2];
 /* dgsh: output file streams */
 static FILE *non_matching_files;	/* -L */
 static FILE *matching_files;		/* -l */
-static FILE *matching_words;		/* -w */
+//static FILE *matching_words;		/* -w */
 static FILE *matching_lines;		/* default */
 static FILE *non_matching;		/* -v */
 
 /* dgsh: XXX future output file streams */
-static FILE *matching_i;		/* -i, -y */
-static FILE *matching_x;		/* -x */
-static FILE *matching_o;		/* -o */
-static FILE *matching_ix;		/* -i, -y */
-static FILE *matching_io;		/* -i, -y */
-
-static FILE *non_matching_i;		/* -i, -y */
-static FILE *non_matching_x;		/* -v */
-static FILE *non_matching_o;		/* -v */
-static FILE *non_matching_ix;		/* -v */
-static FILE *non_matching_io;		/* -v */
+//static FILE *matching_i;		/* -i, -y */
+//static FILE *matching_x;		/* -x */
+//static FILE *matching_o;		/* -o */
+//static FILE *matching_ix;		/* -i, -y */
+//static FILE *matching_io;		/* -i, -y */
+//
+//static FILE *non_matching_i;		/* -i, -y */
+//static FILE *non_matching_x;		/* -v */
+//static FILE *non_matching_o;		/* -v */
+//static FILE *non_matching_ix;		/* -v */
+//static FILE *non_matching_io;		/* -v */
 
 /* Show only the part of a line matching the expression. */
 static bool only_matching;
@@ -1444,14 +1444,14 @@ grepbuf (char *beg, char const *lim)
 	    else
 	      prtext(p, b, stdout, false);
 	  }
-	  if ((out_quiet || matching_lines || matching_words ||
+	  if ((out_quiet || matching_lines || //matching_words ||
 			noutputfds == 0) && b < endp) {
             /* Avoid matching the empty line at the end of the buffer. */
             if (b == lim)
               break;
 	    if (noutputfds > 0)
 	      prtext(b, endp, matching_lines, true);
-	      prtext(b, endp, matching_words, true);
+	      //prtext(b, endp, matching_words, true);
 	    else
 	      prtext(b, endp, stdout, true);
 	  }
@@ -2906,7 +2906,8 @@ main (int argc, char **argv)
 
   bool status = true;
   /* dgsh */
-  non_matching_files = matching_files = matching_words = matching_lines = non_matching = NULL;
+  //non_matching_files = matching_files = matching_words = matching_lines = non_matching = NULL;
+  non_matching_files = matching_files = matching_lines = non_matching = NULL;
   // -c is not combinable; no need to set output stream; stdout suffices
   for (j = 0; j < noutputfds; j++)
     {
@@ -2931,14 +2932,14 @@ main (int argc, char **argv)
 	  else
 	    non_matching_files = fdopen(outputfds[j], "w");
         }
-      else if (!strcmp(options[j], "w"))
+      /*else if (!strcmp(options[j], "w"))
         {
           out_quiet = 0;
 	  if (j == 0)
 	    matching_words = stdout;
 	  else
 	    matching_words = fdopen(outputfds[j], "w");
-        }
+        }*/
       else if (!strcmp(options[j], "v"))
         {
           out_quiet = 0;
