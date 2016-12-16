@@ -88,7 +88,8 @@ static char options[4][2];
 /* dgsh: output file streams */
 static FILE *non_matching_files;	/* -L */
 static FILE *matching_files;		/* -l */
-static FILE *matching;			/* -w, default */
+static FILE *matching_words;		/* -w */
+static FILE *matching_lines;		/* default */
 static FILE *non_matching;		/* -v */
 
 /* dgsh: XXX future output file streams */
@@ -447,6 +448,8 @@ static struct option const long_options[] =
   {"version", no_argument, NULL, 'V'},
   {"with-filename", no_argument, NULL, 'H'},
   {"word-regexp", no_argument, NULL, 'w'},
+  // dgsh
+  {"matching-lines", no_argument, NULL, 'j'},
   {0, 0, 0, 0}
 };
 
@@ -1441,12 +1444,14 @@ grepbuf (char *beg, char const *lim)
 	    else
 	      prtext(p, b, stdout, false);
 	  }
-	  if ((out_quiet || matching || noutputfds == 0) && b < endp) {
+	  if ((out_quiet || matching_lines || matching_words ||
+			noutputfds == 0) && b < endp) {
             /* Avoid matching the empty line at the end of the buffer. */
             if (b == lim)
               break;
 	    if (noutputfds > 0)
-	      prtext(b, endp, matching, true);
+	      prtext(b, endp, matching_lines, true);
+	      prtext(b, endp, matching_words, true);
 	    else
 	      prtext(b, endp, stdout, true);
 	  }
@@ -2515,6 +2520,12 @@ main (int argc, char **argv)
 	//noutputfds++;
         break;
 
+      // dgsh: matching-lines (default)
+      case 'j':
+	strcpy(options[noutputfds], "j");
+        noutputfds++;
+        break;
+
       case 'L':
         /* Like -l, except list files that don't contain matches.
            Inspired by the same option in Hume's gre. */
@@ -2895,10 +2906,17 @@ main (int argc, char **argv)
 
   bool status = true;
   /* dgsh */
-  non_matching_files = matching_files = matching = non_matching = NULL;
+  non_matching_files = matching_files = matching_words = matching_lines = non_matching = NULL;
   // -c is not combinable; no need to set output stream; stdout suffices
   for (j = 0; j < noutputfds; j++)
     {
+      if (!strcmp(options[j], "j"))
+        {
+	  if (j == 0)
+	    matching_lines = stdout;
+	  else
+	    matching_lines = fdopen(outputfds[j], "w");
+	}
       if (!strcmp(options[j], "l"))
         {
 	  if (j == 0)
@@ -2917,9 +2935,9 @@ main (int argc, char **argv)
         {
           out_quiet = 0;
 	  if (j == 0)
-	    matching = stdout;
+	    matching_words = stdout;
 	  else
-	    matching = fdopen(outputfds[j], "w");
+	    matching_words = fdopen(outputfds[j], "w");
         }
       else if (!strcmp(options[j], "v"))
         {
