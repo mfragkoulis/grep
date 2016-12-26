@@ -2677,6 +2677,8 @@ main (int argc, char **argv)
   int *outputfds;
   int noptions = noutputfds;
 
+  fprintf(stderr, "dgsh: number of output fds to be requested: %d\n", noutputfds);
+
   char negotiation_title[100];
   if (argc >= 3)
     snprintf(negotiation_title, 100, "%s %s %s",
