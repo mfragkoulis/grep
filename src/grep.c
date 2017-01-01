@@ -954,6 +954,17 @@ static enum
   WITHOUT_MATCH_BINARY_FILES
 } binary_files;		/* How to handle binary files.  */
 
+
+/* Options for output as a list of matching/non-matching files */
+static enum
+{
+  LISTFILES_NONE,
+  LISTFILES_MATCHING,
+  LISTFILES_NONMATCHING,
+  // dgsh
+  LISTFILES_BOTH,
+} list_files;
+
 static int filename_mask;	/* If zero, output nulls after filenames.  */
 static bool out_quiet;		/* Suppress all normal output. */
 static bool out_invert;		/* Print nonmatching stuff. */
@@ -1806,7 +1817,7 @@ grepdesc (int desc, bool command_line)
      so there is no risk of malfunction.  But even --max-count=2, with
      input==output, while there is no risk of infloop, there is a race
      condition that could result in "alternate" output.  */
-  if (!out_quiet && list_files == 0 && 1 < max_count
+  if (!out_quiet && list_files == LISTFILES_NONE && 1 < max_count
       && SAME_INODE (st, out_stat))
     {
       if (! suppress_errors)
@@ -1841,7 +1852,8 @@ grepdesc (int desc, bool command_line)
 
   status = !count;
   // dgsh: matching_files stream
-  if (list_files == LISTFILES_MATCHING && count > 0)
+  if ((list_files == LISTFILES_MATCHING || list_files == LISTFILES_BOTH)
+         && count > 0)
     {
       print_filename (matching_files);
       putchar_errno ('\n' & filename_mask, matching_files);
@@ -1849,7 +1861,8 @@ grepdesc (int desc, bool command_line)
         fflush_errno (matching_files);
     }
   // dgsh: non_matching_files stream
-  if (list_files == LISTFILES_NONMATCHING && count == 0)
+  if ((list_files == LISTFILES_NONMATCHING || list_files == LISTFILES_BOTH)
+         && count == 0)
     {
       print_filename (non_matching_files);
       putchar_errno ('\n' & filename_mask, non_matching_files);
