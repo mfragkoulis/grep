@@ -1836,7 +1836,7 @@ grepdesc (int desc, bool command_line)
   // dgsh: matching_count stream
   if (count_matches)
     {
-      if (count_matches)
+      if (out_file)
         {
           print_filename (matching_count);
           if (filename_mask)
@@ -2444,8 +2444,6 @@ main (int argc, char **argv)
 
       // dgsh-specific: put first in options so that it gets stdout
       case 'j':
-        /* Like -l, except list files that don't contain matches.
-           Inspired by the same option in Hume's gre. */
 	/* dgsh */
         strcpy(options[noutputfds], "j");
         noutputfds++;
@@ -2526,23 +2524,23 @@ main (int argc, char **argv)
 	//noutputfds++;
         break;
 
-      // dgsh: matching-lines (default)
-      case 'j':
-	strcpy(options[noutputfds], "j");
-        noutputfds++;
-        break;
-
       case 'L':
         /* Like -l, except list files that don't contain matches.
            Inspired by the same option in Hume's gre. */
-        list_files == LISTFILES_MATCHING ? LISTFILES_BOTH : LISTFILES_NONMATCHING;
+        if (list_files == LISTFILES_MATCHING)
+          list_files = LISTFILES_BOTH;
+        else
+          list_files = LISTFILES_NONMATCHING;
 	/* dgsh */
         strcpy(options[noutputfds], "L");
         noutputfds++;
         break;
 
       case 'l':
-        list_files == LISTFILES_NONMATCHING ? LISTFILES_BOTH : LISTFILES_MATCHING;
+        if (list_files == LISTFILES_NONMATCHING)
+          list_files = LISTFILES_BOTH;
+        else
+          list_files = LISTFILES_MATCHING;
 	/* dgsh */
         strcpy(options[noutputfds], "l");
         noutputfds++;
@@ -2767,56 +2765,6 @@ main (int argc, char **argv)
         keys[keycc++] = '\n';
     }
 
-  /* dgsh */
-  int j = 0, dgshinputfd;
-  int ninputfds = -1;
-  int *inputfds;
-  int *outputfds;
-
-  char negotiation_title[100];
-  if (argc >= 3)
-    snprintf(negotiation_title, 100, "%s %s %s",
-	argv[0], argv[1], argv[2]);
-  else if (argc == 2)
-    snprintf(negotiation_title, 100, "%s %s",
-	argv[0], argv[1]);
-  else
-    snprintf(negotiation_title, 100, "%s", argv[0]);
-
-  int exit_status;
-  if ((exit_status = dgsh_negotiate(negotiation_title,
-			  &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0)
-      errx(1, "dgsh negotiation failed for grep with status code %d.\n", exit_status);
-
-  /* dgsh */
-  assert(ninputfds >= 0);
-  /* 4: matching files, non-matching files,
-        matching lines, non-matching lines */
-  assert(noutputfds >= 0 && noutputfds <= 4);
-
-  if (inputpattern == true)	// Copied from -f
-    {
-      fp = stdin;
-      if (!fp)
-        error (EXIT_TROUBLE, errno, "%s", optarg);
-      for (keyalloc = 1; keyalloc <= keycc + 1; keyalloc *= 2)
-	;
-      keys = xrealloc (keys, keyalloc);
-      oldcc = keycc;
-      while ((cc = fread (keys + keycc, 1, keyalloc - 1 - keycc, fp)) != 0)
-        {
-	  keycc += cc;
-	  if (keycc == keyalloc - 1)
-	    keys = x2nrealloc (keys, &keyalloc, sizeof *keys);
-        }
-      fread_errno = errno;
-      if (ferror (fp))
-	error (EXIT_TROUBLE, fread_errno, "%s", optarg);
-      /* Append final newline if file ended in non-newline. */
-      if (oldcc != keycc && keys[keycc - 1] != '\n')
-	keys[keycc++] = '\n';
-    }
-
   bool possibly_tty = false;
   struct stat tmp_stat;
   if (! exit_on_match && fstat (STDOUT_FILENO, &tmp_stat) == 0)
@@ -2853,7 +2801,7 @@ main (int argc, char **argv)
      implementation, -q overrides -l and -L, which in turn override -c.  */
   if (exit_on_match)
     list_files = LISTFILES_NONE;
-  if (exit_on_match | list_files != LISTFILES_NONE)
+  if (exit_on_match || list_files != LISTFILES_NONE)
     {
       count_matches = false;
       done_on_match = true;
