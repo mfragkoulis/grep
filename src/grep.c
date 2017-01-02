@@ -974,7 +974,6 @@ static bool out_byte;		/* Print byte offsets. */
 static intmax_t out_before;	/* Lines of leading context. */
 static intmax_t out_after;	/* Lines of trailing context. */
 static bool count_matches;	/* Count matching lines.  */
-static int list_files;		/* List matching files.  */
 static bool no_filenames;	/* Suppress file names.  */
 static intmax_t max_count;	/* Stop after outputting this many
                                    lines from an input file.  */
@@ -1366,7 +1365,7 @@ prtext (char *beg, char *lim, FILE *stream)
 
   intmax_t n;
   /* dgsh */
-  if (!matching)
+  if (out_invert)
     {
       /* One or more lines are output.  */
       for (n = 0; p < lim && n < outleft; n++)
@@ -2536,14 +2535,14 @@ main (int argc, char **argv)
       case 'L':
         /* Like -l, except list files that don't contain matches.
            Inspired by the same option in Hume's gre. */
-        list_files = LISTFILES_NONMATCHING;
+        list_files == LISTFILES_MATCHING ? LISTFILES_BOTH : LISTFILES_NONMATCHING;
 	/* dgsh */
         strcpy(options[noutputfds], "L");
         noutputfds++;
         break;
 
       case 'l':
-        list_files = LISTFILES_MATCHING;
+        list_files == LISTFILES_NONMATCHING ? LISTFILES_BOTH : LISTFILES_MATCHING;
 	/* dgsh */
         strcpy(options[noutputfds], "l");
         noutputfds++;
@@ -2853,8 +2852,8 @@ main (int argc, char **argv)
   /* POSIX says -c, -l and -q are mutually exclusive.  In this
      implementation, -q overrides -l and -L, which in turn override -c.  */
   if (exit_on_match)
-    list_files = 0;
-  if (exit_on_match | list_files)
+    list_files = LISTFILES_NONE;
+  if (exit_on_match | list_files != LISTFILES_NONE)
     {
       count_matches = false;
       done_on_match = true;
