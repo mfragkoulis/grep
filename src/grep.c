@@ -2614,12 +2614,12 @@ main (int argc, char **argv)
 
       case 'w':
         match_words = true;
-	/* dgsh */
+	/* dgsh
 	if (!count_matches)
 	  {
 	    strcpy(options[noutputfds], "w");
 	    noutputfds++;
-	  }
+	  }*/
         break;
 
       case 'x':
