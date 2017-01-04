@@ -93,7 +93,8 @@ static FILE *non_matching_files;        /* -L */
 static FILE *matching_files;            /* -l */
 static FILE *matching_lines;            /* default */
 static FILE *non_matching;              /* -v */
-static FILE *matching_count;              /* -c */
+static FILE *matching_count;            /* -c */
+static FILE *matching_only;             /* -o */
 
 /* Show only the part of a line matching the expression. */
 static bool only_matching;
@@ -1275,7 +1276,10 @@ prline (char *beg, char *lim, char sep, FILE *stream)
       /* We already know that non-matching lines have no match (to colorize). */
       if (matching && (only_matching || *match_color))
         {
-          beg = print_line_middle (beg, lim, line_color, match_color, stream);
+          if (only_matching)
+            beg = print_line_middle (beg, lim, line_color, match_color, matching_only);
+          else
+            beg = print_line_middle (beg, lim, line_color, match_color, stream);
           if (! beg)
             return;
         }
@@ -2584,7 +2588,8 @@ main (int argc, char **argv)
       case 'o':
         only_matching = true;
 	/* dgsh */
-	//noutputfds++;
+        strcpy(options[noutputfds], "o");
+	noutputfds++;
         break;
 
       case 'q':
@@ -2933,7 +2938,7 @@ main (int argc, char **argv)
 
   bool status = true;
   /* dgsh */
-  non_matching_files = matching_files = matching_lines = non_matching = matching_count = NULL;
+  non_matching_files = matching_files = matching_lines = non_matching = matching_count = matching_only = NULL;
   if (noptions == 0)
     matching_lines = stdout;
   for (j = 0; j < noptions; j++)
@@ -2968,14 +2973,14 @@ main (int argc, char **argv)
           else
             non_matching_files = fdopen(outputfds[j], "w");
         }
-      /*else if (!strcmp(options[j], "w"))
+      else if (!strcmp(options[j], "o"))
         {
-          out_quiet = 0;
+          //out_quiet = 0;
           if (j == 0)
-            matching_words = stdout;
+            matching_only = stdout;
           else
-            matching_words = fdopen(outputfds[j], "w");
-        }*/
+            matching_only = fdopen(outputfds[j], "w");
+        }
       else if (!strcmp(options[j], "v"))
         {
           //fprintf(stderr, "dgsh: inverted grep out stream active for j: %d, outputfds[j]: %d\n", j, outputfds[j]);
