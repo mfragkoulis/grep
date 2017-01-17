@@ -2755,13 +2755,9 @@ main (int argc, char **argv)
   else
     snprintf(negotiation_title, 100, "%s", argv[0]);
 
-  int exit_status;
-  if ((exit_status = dgsh_negotiate(negotiation_title,
-                          &ninputfds, &noutputfds, &inputfds, &outputfds))
-		  != 0) {
-      DPRINTF("dgsh negotiation failed for grep with status code %d.\n", exit_status);
+  if (dgsh_negotiate(negotiation_title,
+                          &ninputfds, &noutputfds, &inputfds, &outputfds) != 0)
       exit(1);
-  }
 
   /* dgsh */
   assert(ninputfds >= 0);
