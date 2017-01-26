@@ -38,7 +38,7 @@ noinst_HEADERS = grep.h dfa.h kwset.h search.h system.h
 # dgsh link against the dgsh negotiation library
 LDADD = \
   ../lib/libgreputils.a $(LIBINTL) ../lib/libgreputils.a $(LIBICONV) \
-  $(LIBTHREAD) ../../../libdgsh_negotiate.a
+  $(LIBTHREAD) ../../../libdgsh.a
 
 grep_LDADD = $(LDADD) $(PCRE_LIBS)
 localedir = $(datadir)/locale
