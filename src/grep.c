@@ -53,7 +53,7 @@
 /*  dgsh negotiate API (fix -I) */
 #include <assert.h>
 #include <err.h>
-#include "dgsh-negotiate.h"
+#include "dgsh.h"
 
 #define SEP_CHAR_SELECTED ':'
 #define SEP_CHAR_REJECTED '-'
