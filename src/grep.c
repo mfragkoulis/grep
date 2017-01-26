@@ -353,12 +353,12 @@ printf_errno (FILE *stream, char const *format, ...)
 static void
 fwrite_errno (void const *ptr, size_t size, size_t nmemb, FILE *stream)
 {
-  fprintf(stderr, "before fwrite size to write: %zu, elements: %zu, stdout_errno: %d\n",
-          size, nmemb, stdout_errno);
+  //fprintf(stderr, "before fwrite size to write: %zu, elements: %zu, stdout_errno: %d\n",
+     //     size, nmemb, stdout_errno);
   if (fwrite (ptr, size, nmemb, stream) != nmemb)
     stdout_errno = errno;
   fflush(stream);
-  fprintf(stderr, "after fwrite: stdout_errno: %d\n", stdout_errno);
+  //fprintf(stderr, "after fwrite: stdout_errno: %d\n", stdout_errno);
 }
 
 // dgsh
@@ -1084,7 +1084,7 @@ print_offset (uintmax_t pos, int min_width, const char *color, FILE *stream)
 static bool
 print_line_head (char *beg, size_t len, char const *lim, char sep, FILE *stream)
 {
-  fprintf(stderr, "print line head\n");
+  //fprintf(stderr, "print line head\n");
   bool encoding_errors = false;
   if (binary_files != TEXT_BINARY_FILES)
     {
@@ -1145,7 +1145,7 @@ print_line_head (char *beg, size_t len, char const *lim, char sep, FILE *stream)
       print_sep (sep, stream);
     }
 
-  fprintf(stderr, "end print line head\n");
+  //fprintf(stderr, "end print line head\n");
   return true;
 }
 
@@ -1249,13 +1249,13 @@ prline (char *beg, char *lim, char sep, FILE *stream)
   const char *line_color;
   const char *match_color;
 
-  fprintf(stderr, "dgsh stream: %lx\n", (long)stream);
+  //fprintf(stderr, "dgsh stream: %lx\n", (long)stream);
 
   if (!only_matching)
     if (! print_line_head (beg, lim - beg - 1, lim, sep, stream))
       return;
 
-  fprintf(stderr, "dgsh head printed\n");
+  //fprintf(stderr, "dgsh head printed\n");
 
   matching = (sep == SEP_CHAR_SELECTED) ^ out_invert;
 
@@ -1284,7 +1284,7 @@ prline (char *beg, char *lim, char sep, FILE *stream)
             return;
         }
 
-  fprintf(stderr, "dgsh middle printed\n");
+  //fprintf(stderr, "dgsh middle printed\n");
 
       if (!only_matching && *line_color)
         {
@@ -1294,11 +1294,11 @@ prline (char *beg, char *lim, char sep, FILE *stream)
         }
     }
 
-  fprintf(stderr, "dgsh fwrite printed\n");
+  //fprintf(stderr, "dgsh fwrite printed\n");
   if (!only_matching && lim > beg)
     fwrite_errno (beg, 1, lim - beg, stream);
 
-  fprintf(stderr, "dgsh fflush printed\n");
+  //fprintf(stderr, "dgsh fflush printed\n");
   if (line_buffered)
     fflush_errno (stream);
 
@@ -1385,12 +1385,12 @@ prtext (char *beg, char *lim, FILE *stream)
         {
           char *nl = memchr (p, eol, lim - p);
           nl++;
-          fprintf(stderr, "dgsh: print non matching lines: beg: %s, end: %s\n", p, nl);
+          //fprintf(stderr, "dgsh: print non matching lines: beg: %s, end: %s\n", p, nl);
           if (!out_quiet)
             prline (p, nl, SEP_CHAR_SELECTED, stream);
           p = nl;
         }
-      fprintf(stderr, "end of loop\n");
+      //fprintf(stderr, "end of loop\n");
     }
   else
     {
@@ -1461,10 +1461,10 @@ grepbuf (char *beg, char const *lim)
           char *prbeg = out_invert ? p : b;
           char *prend = out_invert ? b : endp;
           if (out_invert) {
-            fprintf(stderr, "dgsh: print non matching line: beg: %s, end: %s\n", prbeg, prend);
+            //fprintf(stderr, "dgsh: print non matching line: beg: %s, end: %s\n", prbeg, prend);
             prtext (prbeg, prend, non_matching);
           } else {
-            fprintf(stderr, "dgsh: print matching line\n");
+            //fprintf(stderr, "dgsh: print matching line\n");
             prtext (prbeg, prend, matching_lines);
           }
           if (!outleft || done_on_match)
@@ -1850,11 +1850,11 @@ grepdesc (int desc, bool command_line)
 #endif
 
   count = grep (desc, &st);
-  fprintf(stderr, "dgsh: count: %jd\n", count);
+  //fprintf(stderr, "dgsh: count: %jd\n", count);
   // dgsh: matching_count stream
   if (count_matches)
     {
-      fprintf(stderr, "dgsh: print count of matches\n");
+      //fprintf(stderr, "dgsh: print count of matches\n");
       if (out_file)
         {
           print_filename (matching_count);
@@ -1870,11 +1870,11 @@ grepdesc (int desc, bool command_line)
 
   status = !count;
   // dgsh: matching_files stream
-  fprintf(stderr, "dgsh: list_file: %d, count: %jd\n", list_files, count);
+  //fprintf(stderr, "dgsh: list_file: %d, count: %jd\n", list_files, count);
   if ((list_files == LISTFILES_MATCHING || list_files == LISTFILES_BOTH)
          && count > 0)
     {
-      fprintf(stderr, "dgsh: print matching file\n");
+      //fprintf(stderr, "dgsh: print matching file\n");
       print_filename (matching_files);
       putchar_errno ('\n' & filename_mask, matching_files);
       if (line_buffered)
@@ -1884,7 +1884,7 @@ grepdesc (int desc, bool command_line)
   if ((list_files == LISTFILES_NONMATCHING || list_files == LISTFILES_BOTH)
          && count == 0)
     {
-      fprintf(stderr, "dgsh: print non matching file\n");
+      //fprintf(stderr, "dgsh: print non matching file\n");
       print_filename (non_matching_files);
       putchar_errno ('\n' & filename_mask, non_matching_files);
       if (line_buffered)
@@ -2743,7 +2743,7 @@ main (int argc, char **argv)
   int *outputfds;
   int noptions = noutputfds;
 
-  fprintf(stderr, "dgsh: number of output fds to be requested: %d\n", noutputfds);
+  //fprintf(stderr, "dgsh: number of output fds to be requested: %d\n", noutputfds);
 
   char negotiation_title[100];
   if (argc >= 3)
@@ -2832,8 +2832,8 @@ main (int argc, char **argv)
     }
   out_quiet = (count_matches && !out_invert && !match_line_part) | done_on_match;
 
-  fprintf(stderr, "dgsh: count_matches: %d, out_invert: %d, done_on_match: %d, out_quiet: %d, out_file: %d, exit_on_match: %d\n",
-  count_matches, out_invert, done_on_match, out_quiet, out_file, exit_on_match);
+  //fprintf(stderr, "dgsh: count_matches: %d, out_invert: %d, done_on_match: %d, out_quiet: %d, out_file: %d, exit_on_match: %d\n",
+  //count_matches, out_invert, done_on_match, out_quiet, out_file, exit_on_match);
 
   if (out_after < 0)
     out_after = default_context;
@@ -2966,7 +2966,7 @@ main (int argc, char **argv)
       else if (!strcmp(options[j], "L"))
         {
 
-          fprintf(stderr, "dgsh: non matching files stream active for j: %d, outputfds[j]: %d\n", j, outputfds[j]);
+          //fprintf(stderr, "dgsh: non matching files stream active for j: %d, outputfds[j]: %d\n", j, outputfds[j]);
           if (j == 0)
             non_matching_files = stdout;
           else
@@ -2983,7 +2983,7 @@ main (int argc, char **argv)
       else if (!strcmp(options[j], "v"))
         {
           //fprintf(stderr, "dgsh: inverted grep out stream active for j: %d, outputfds[j]: %d\n", j, outputfds[j]);
-          fprintf(stderr, "dgsh: inverted grep out stream active for j: %d\n", j);
+          //fprintf(stderr, "dgsh: inverted grep out stream active for j: %d\n", j);
           //out_quiet = 0;
           if (j == 0)
             non_matching = stdout;
