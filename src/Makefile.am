@@ -38,12 +38,12 @@ noinst_HEADERS = grep.h dfa.h kwset.h search.h system.h
 # dgsh link against the dgsh negotiation library
 LDADD = \
   ../lib/libgreputils.a $(LIBINTL) ../lib/libgreputils.a $(LIBICONV) \
-  $(LIBTHREAD) ../../../libdgsh.a
+  $(LIBTHREAD) ../../../core-tools/src/libdgsh.a
 
 grep_LDADD = $(LDADD) $(PCRE_LIBS)
 localedir = $(datadir)/locale
-# dgsh include path: -I../../..
-AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib -I../../..
+# dgsh include path: -I../../../core-tools/src
+AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib -I../../../core-tools/src
 
 EXTRA_DIST = dosbuf.c egrep.sh
 
