@@ -2743,12 +2743,6 @@ main (int argc, char **argv)
   int *outputfds;
   int noptions = noutputfds;
 
-  /* will become 1 if pipe is there on the output side, otherwise 0 */
-  if (noutputfds == 0)
-    noutputfds = -1;
-
-  //fprintf(stderr, "dgsh: number of output fds to be requested: %d\n", noutputfds);
-
   char negotiation_title[100];
   if (argc >= 3)
     snprintf(negotiation_title, 100, "%s %s %s",
