@@ -2743,6 +2743,9 @@ main (int argc, char **argv)
   int *outputfds;
   int noptions = noutputfds;
 
+  if (noutputfds == 0)
+    noutputfds = -1;
+
   char negotiation_title[100];
   if (argc >= 3)
     snprintf(negotiation_title, 100, "%s %s %s",
@@ -2935,9 +2938,9 @@ main (int argc, char **argv)
   bool status = true;
   /* dgsh */
   non_matching_files = matching_files = matching_lines = non_matching = matching_count = matching_only = NULL;
-  if (noptions == 0)
+  if (noptions == 0 && noutputfds <= 1)
     matching_lines = stdout;
-  for (j = 0; j < noptions; j++)
+  for (j = 0; j < noutputfds; j++)
     {
       if (!strcmp(options[j], "c"))
         {
