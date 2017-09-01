@@ -2389,7 +2389,7 @@ main (int argc, char **argv)
   execute = matchers[0].execute;
 
   /* dgsh: default: the lines where the pattern matched */
-  noutputfds = 0;
+  int noptions = 0;
   bool inputpattern = false;
 
   while (prev_optind = optind,
@@ -2468,8 +2468,8 @@ main (int argc, char **argv)
       case 'j':
 	/* dgsh */
         match_line_part = true;
-        strcpy(options[noutputfds], "j");
-        noutputfds++;
+        strcpy(options[noptions], "j");
+        noptions++;
         break;
 
       case 'a':
@@ -2483,8 +2483,8 @@ main (int argc, char **argv)
       case 'c':
         // dgsh
         count_matches = true;
-        strcpy(options[noutputfds], "c");
-        noutputfds++;
+        strcpy(options[noptions], "c");
+        noptions++;
         break;
 
       case 'd':
@@ -2544,7 +2544,7 @@ main (int argc, char **argv)
       case 'y':			/* For old-timers . . . */
         match_icase = true;
 	/* dgsh */
-	//noutputfds++;
+	//noptions++;
         break;
 
       case 'L':
@@ -2555,8 +2555,8 @@ main (int argc, char **argv)
         else
           list_files = LISTFILES_NONMATCHING;
 	/* dgsh */
-        strcpy(options[noutputfds], "L");
-        noutputfds++;
+        strcpy(options[noptions], "L");
+        noptions++;
         break;
 
       case 'l':
@@ -2565,8 +2565,8 @@ main (int argc, char **argv)
         else
           list_files = LISTFILES_MATCHING;
 	/* dgsh */
-        strcpy(options[noutputfds], "l");
-        noutputfds++;
+        strcpy(options[noptions], "l");
+        noptions++;
         break;
 
       case 'm':
@@ -2588,8 +2588,8 @@ main (int argc, char **argv)
       case 'o':
         only_matching = true;
 	/* dgsh */
-        strcpy(options[noutputfds], "o");
-	noutputfds++;
+        strcpy(options[noptions], "o");
+	noptions++;
         break;
 
       case 'q':
@@ -2610,11 +2610,11 @@ main (int argc, char **argv)
         break;
 
       case 'v':
-        //fprintf(stderr, "dgsh: set argument for inverted grep at pos: %d\n", noutputfds);
+        //fprintf(stderr, "dgsh: set argument for inverted grep at pos: %d\n", noptions);
         out_invert = true;
 	/* dgsh */
-        strcpy(options[noutputfds], "v");
-        noutputfds++;
+        strcpy(options[noptions], "v");
+        noptions++;
         break;
 
       case 'w':
@@ -2622,15 +2622,15 @@ main (int argc, char **argv)
 	/* dgsh
 	if (!count_matches)
 	  {
-	    strcpy(options[noutputfds], "w");
-	    noutputfds++;
+	    strcpy(options[noptions], "w");
+	    noptions++;
 	  }*/
         break;
 
       case 'x':
         match_lines = true;
 	/* dgsh */
-	//noutputfds++;
+	//noptions++;
         break;
 
       case 'Z':
@@ -2741,10 +2741,11 @@ main (int argc, char **argv)
   int ninputfds = -1;
   int *inputfds;
   int *outputfds;
-  int noptions = noutputfds;
 
-  if (noutputfds == 0)
+  if (noptions == 0)
     noutputfds = -1;
+  else
+    noutputfds = noptions;
 
   char negotiation_title[100];
   if (argc >= 3)
@@ -2940,7 +2941,7 @@ main (int argc, char **argv)
   non_matching_files = matching_files = matching_lines = non_matching = matching_count = matching_only = NULL;
   if (noptions == 0 && noutputfds <= 1)
     matching_lines = stdout;
-  for (j = 0; j < noutputfds; j++)
+  for (j = 0; j < noptions; j++)
     {
       if (!strcmp(options[j], "c"))
         {
